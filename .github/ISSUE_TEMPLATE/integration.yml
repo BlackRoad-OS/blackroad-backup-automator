@@ -1,0 +1,88 @@
+name: Integration Request
+description: Request a new API or service integration
+title: "[INTEGRATION]: "
+labels: ["integration"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## BlackRoad Integration Request
+        Request a new service integration for the backup automator.
+
+  - type: input
+    id: service-name
+    attributes:
+      label: Service Name
+      description: Name of the service to integrate
+      placeholder: "e.g., AWS S3, Notion, etc."
+    validations:
+      required: true
+
+  - type: dropdown
+    id: service-type
+    attributes:
+      label: Service Type
+      description: Type of service
+      options:
+        - cloud-storage
+        - api
+        - database
+        - crm
+        - monitoring
+        - mobile
+        - terminal
+        - other
+    validations:
+      required: true
+
+  - type: input
+    id: api-url
+    attributes:
+      label: API Base URL
+      description: Base URL for the API
+      placeholder: "https://api.example.com/v1"
+
+  - type: dropdown
+    id: auth-type
+    attributes:
+      label: Authentication Type
+      description: How does the API authenticate?
+      options:
+        - bearer-token
+        - api-key
+        - oauth2
+        - basic-auth
+        - none
+    validations:
+      required: true
+
+  - type: textarea
+    id: use-case
+    attributes:
+      label: Use Case
+      description: Why do we need this integration?
+      placeholder: Describe how this integration will be used...
+    validations:
+      required: true
+
+  - type: textarea
+    id: endpoints
+    attributes:
+      label: Required Endpoints
+      description: Which API endpoints do we need?
+      placeholder: |
+        - GET /resources - List resources
+        - POST /resources - Create resource
+        - etc.
+
+  - type: checkboxes
+    id: features
+    attributes:
+      label: Required Features
+      description: Select all that apply
+      options:
+        - label: Health check endpoint
+        - label: State synchronization
+        - label: Backup support
+        - label: Webhook support
+        - label: Real-time updates

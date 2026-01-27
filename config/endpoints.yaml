@@ -1,0 +1,305 @@
+# BlackRoad Endpoint Configuration
+# All configured endpoints, APIs, and services
+
+version: "1.0"
+schema: "blackroad-endpoints-v1"
+
+# Cloud Services
+cloud:
+  cloudflare:
+    name: "Cloudflare"
+    type: "cdn_dns_kv"
+    endpoints:
+      api: "https://api.cloudflare.com/client/v4"
+      workers: "https://workers.cloudflare.com"
+      kv: "https://api.cloudflare.com/client/v4/accounts/{account_id}/storage/kv/namespaces"
+    auth:
+      type: "bearer"
+      env_var: "CLOUDFLARE_API_TOKEN"
+    health_check:
+      endpoint: "/user/tokens/verify"
+      method: "GET"
+      expected_status: 200
+    features:
+      - dns_management
+      - kv_storage
+      - workers
+      - r2_storage
+      - state_sync
+
+  vercel:
+    name: "Vercel"
+    type: "deployment"
+    endpoints:
+      api: "https://api.vercel.com"
+      deployments: "https://api.vercel.com/v13/deployments"
+      projects: "https://api.vercel.com/v9/projects"
+    auth:
+      type: "bearer"
+      env_var: "VERCEL_TOKEN"
+    health_check:
+      endpoint: "/v2/user"
+      method: "GET"
+      expected_status: 200
+    features:
+      - deployments
+      - edge_functions
+      - analytics
+
+  digitalocean:
+    name: "Digital Ocean"
+    type: "infrastructure"
+    endpoints:
+      api: "https://api.digitalocean.com/v2"
+      droplets: "https://api.digitalocean.com/v2/droplets"
+      kubernetes: "https://api.digitalocean.com/v2/kubernetes/clusters"
+      spaces: "https://{region}.digitaloceanspaces.com"
+    auth:
+      type: "bearer"
+      env_var: "DIGITALOCEAN_TOKEN"
+    health_check:
+      endpoint: "/account"
+      method: "GET"
+      expected_status: 200
+    features:
+      - droplets
+      - kubernetes
+      - spaces_storage
+      - databases
+
+# CRM & Business
+crm:
+  salesforce:
+    name: "Salesforce"
+    type: "crm"
+    endpoints:
+      login: "https://login.salesforce.com"
+      api: "https://{instance}.salesforce.com/services/data/v58.0"
+      sobjects: "https://{instance}.salesforce.com/services/data/v58.0/sobjects"
+      composite: "https://{instance}.salesforce.com/services/data/v58.0/composite"
+    auth:
+      type: "oauth2"
+      env_vars:
+        client_id: "SF_CLIENT_ID"
+        client_secret: "SF_CLIENT_SECRET"
+        username: "SF_USERNAME"
+        password: "SF_PASSWORD"
+        security_token: "SF_SECURITY_TOKEN"
+    health_check:
+      endpoint: "/services/data"
+      method: "GET"
+      expected_status: 200
+    features:
+      - crm_sync
+      - state_management
+      - reporting
+      - custom_objects
+    custom_objects:
+      - BlackRoad_Project__c
+      - BlackRoad_Task__c
+      - BlackRoad_Integration__c
+      - BlackRoad_Hash__c
+
+# AI Services
+ai:
+  claude:
+    name: "Claude (Anthropic)"
+    type: "ai_assistant"
+    endpoints:
+      api: "https://api.anthropic.com/v1"
+      messages: "https://api.anthropic.com/v1/messages"
+      completions: "https://api.anthropic.com/v1/complete"
+    auth:
+      type: "x-api-key"
+      env_var: "ANTHROPIC_API_KEY"
+    health_check:
+      endpoint: "/v1/messages"
+      method: "POST"
+      expected_status: [200, 400]  # 400 means API is up but needs valid request
+    features:
+      - code_generation
+      - task_execution
+      - pr_review
+      - documentation
+    models:
+      - claude-opus-4-5-20251101
+      - claude-sonnet-4-20250514
+      - claude-haiku-3-5-20241022
+
+# Hardware / Edge Devices
+hardware:
+  raspberry_pi:
+    name: "Raspberry Pi Cluster"
+    type: "edge_compute"
+    endpoints:
+      # Define your Pi cluster IPs/hostnames
+      cluster:
+        - name: "pi-master"
+          host: "${PI_MASTER_HOST:-192.168.1.100}"
+          port: 22
+          ssh_key_env: "PI_SSH_KEY"
+        - name: "pi-worker-1"
+          host: "${PI_WORKER_1_HOST:-192.168.1.101}"
+          port: 22
+        - name: "pi-worker-2"
+          host: "${PI_WORKER_2_HOST:-192.168.1.102}"
+          port: 22
+        - name: "pi-worker-3"
+          host: "${PI_WORKER_3_HOST:-192.168.1.103}"
+          port: 22
+      api:
+        base: "http://${PI_MASTER_HOST:-192.168.1.100}:8080"
+        health: "/health"
+        backup: "/api/backup"
+        sync: "/api/sync"
+    auth:
+      type: "ssh_key"
+      env_var: "PI_SSH_KEY"
+    health_check:
+      method: "ssh"
+      command: "echo 'ping'"
+      expected: "ping"
+    features:
+      - distributed_backup
+      - edge_storage
+      - local_processing
+      - cluster_sync
+
+# Terminal & SSH Tools
+terminal:
+  termius:
+    name: "Termius"
+    type: "ssh_management"
+    endpoints:
+      api: "https://api.termius.com"
+      sync: "https://api.termius.com/api/v3/sync"
+    auth:
+      type: "bearer"
+      env_var: "TERMIUS_API_KEY"
+    features:
+      - ssh_management
+      - host_sync
+      - credential_vault
+      - team_sharing
+
+# Mobile Development Tools
+mobile:
+  ish:
+    name: "iSH (iOS Shell)"
+    type: "mobile_terminal"
+    description: "Alpine Linux shell for iOS"
+    endpoints:
+      local: "localhost"
+      default_port: 8022
+    features:
+      - alpine_linux
+      - apk_packages
+      - git_operations
+      - python_scripts
+    setup:
+      packages:
+        - git
+        - python3
+        - openssh
+        - curl
+        - jq
+
+  shellfish:
+    name: "Shellfish"
+    type: "mobile_sftp"
+    description: "iOS SFTP/SSH client"
+    endpoints:
+      protocol: "sftp"
+      default_port: 22
+    features:
+      - sftp_transfer
+      - ssh_terminal
+      - file_editing
+      - key_management
+
+  working_copy:
+    name: "Working Copy"
+    type: "mobile_git"
+    description: "iOS Git client"
+    endpoints:
+      url_scheme: "working-copy://"
+      x_callback: "working-copy://x-callback-url"
+    features:
+      - full_git_support
+      - github_integration
+      - code_editing
+      - diff_viewing
+      - pr_management
+    url_actions:
+      clone: "working-copy://x-callback-url/clone?url={repo_url}"
+      pull: "working-copy://x-callback-url/pull?repo={repo_name}"
+      push: "working-copy://x-callback-url/push?repo={repo_name}"
+      commit: "working-copy://x-callback-url/commit?repo={repo_name}&message={message}"
+
+  pyto:
+    name: "Pyto"
+    type: "mobile_python"
+    description: "iOS Python IDE"
+    endpoints:
+      url_scheme: "pyto://"
+    features:
+      - python_execution
+      - pip_packages
+      - shortcuts_integration
+      - file_access
+    supported_packages:
+      - requests
+      - numpy
+      - pandas
+      - PIL
+      - cryptography
+
+# Version Control
+vcs:
+  github:
+    name: "GitHub"
+    type: "vcs"
+    endpoints:
+      api: "https://api.github.com"
+      graphql: "https://api.github.com/graphql"
+      repos: "https://api.github.com/repos"
+      projects: "https://api.github.com/projects"
+    auth:
+      type: "bearer"
+      env_var: "GITHUB_TOKEN"
+    health_check:
+      endpoint: "/rate_limit"
+      method: "GET"
+      expected_status: 200
+    features:
+      - repositories
+      - pull_requests
+      - issues
+      - projects
+      - actions
+      - packages
+
+# Health Check Configuration
+health_check:
+  interval: 300  # 5 minutes
+  timeout: 30
+  retries: 3
+  retry_delay: 5
+  notifications:
+    on_failure:
+      - slack
+      - email
+    on_recovery:
+      - slack
+
+# Hash Verification for Endpoints
+hash_verification:
+  enabled: true
+  algorithm: "sha256"
+  verify_on:
+    - config_load
+    - endpoint_change
+    - scheduled_check
+  store_in:
+    - cloudflare_kv
+    - local_cache

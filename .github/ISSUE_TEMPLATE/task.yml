@@ -1,0 +1,83 @@
+name: Task
+description: Create a task for the kanban board
+title: "[TASK]: "
+labels: ["task"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## BlackRoad Task Template
+        Create a task that will be tracked on the kanban board.
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority
+      description: Task priority level
+      options:
+        - critical
+        - high
+        - medium
+        - low
+    validations:
+      required: true
+
+  - type: dropdown
+    id: category
+    attributes:
+      label: Category
+      description: Task category
+      options:
+        - feature
+        - bug
+        - integration
+        - documentation
+        - infrastructure
+        - agent-task
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: Detailed description of the task
+      placeholder: Describe what needs to be done...
+    validations:
+      required: true
+
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance Criteria
+      description: What conditions must be met for this task to be complete?
+      placeholder: |
+        - [ ] Criteria 1
+        - [ ] Criteria 2
+        - [ ] Criteria 3
+
+  - type: dropdown
+    id: agent-compatible
+    attributes:
+      label: Agent Compatible
+      description: Can an AI agent work on this task?
+      options:
+        - "yes"
+        - "no"
+        - "partial"
+    validations:
+      required: true
+
+  - type: input
+    id: estimate
+    attributes:
+      label: Estimate (hours)
+      description: Estimated time to complete
+      placeholder: "2"
+
+  - type: textarea
+    id: related
+    attributes:
+      label: Related Issues/PRs
+      description: Link any related issues or PRs
+      placeholder: "#123, #456"

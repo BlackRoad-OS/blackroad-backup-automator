@@ -1,0 +1,151 @@
+# BlackRoad PR Validation Workflow
+# Runs quality gates on all pull requests
+
+name: PR Validation
+
+on:
+  pull_request:
+    branches: [main, master, develop]
+  push:
+    branches: [main, master, develop]
+
+jobs:
+  validate:
+    name: Validate PR
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install pyyaml requests
+
+      - name: Run PR validation
+        run: |
+          python scripts/validate_pr.py --output validation-report.json
+
+      - name: Upload validation report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: validation-report
+          path: validation-report.json
+
+      - name: Check validation result
+        run: |
+          if [ -f validation-report.json ]; then
+            all_passed=$(python -c "import json; print(json.load(open('validation-report.json'))['all_passed'])")
+            if [ "$all_passed" != "True" ]; then
+              echo "::error::PR validation failed. See validation report for details."
+              exit 1
+            fi
+          fi
+
+  health-check:
+    name: Endpoint Health Check
+    runs-on: ubuntu-latest
+    # Only run if secrets are available
+    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install pyyaml requests
+
+      - name: Run health checks
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          DIGITALOCEAN_TOKEN: ${{ secrets.DIGITALOCEAN_TOKEN }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          python scripts/health_check.py --output health-report.json || true
+
+      - name: Upload health report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: health-report
+          path: health-report.json
+
+  hash-verification:
+    name: Hash Verification
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Verify config hashes
+        run: |
+          python -c "
+          import sys
+          sys.path.insert(0, 'lib')
+          from hash import BlackRoadHasher
+
+          hasher = BlackRoadHasher()
+
+          # Hash all config files
+          config_hashes = hasher.hash_directory('config', '*.yaml')
+          print('Config File Hashes:')
+          for path, hash_val in config_hashes.items():
+              print(f'  {path}: {hash_val[:16]}...')
+
+          # Hash all Python files
+          lib_hashes = hasher.hash_directory('lib', '*.py')
+          print('\\nLib File Hashes:')
+          for path, hash_val in lib_hashes.items():
+              print(f'  {path}: {hash_val[:16]}...')
+
+          # Create manifest
+          manifest = hasher.create_manifest({
+              **config_hashes,
+              **lib_hashes
+          })
+          print(f'\\nManifest Hash: {manifest[\"manifest_hash\"][:16]}...')
+          "
+
+      - name: Save hash manifest
+        run: |
+          python -c "
+          import sys, json
+          sys.path.insert(0, 'lib')
+          from hash import BlackRoadHasher
+
+          hasher = BlackRoadHasher()
+          config_hashes = hasher.hash_directory('config', '*.yaml')
+          lib_hashes = hasher.hash_directory('lib', '*.py')
+          manifest = hasher.create_manifest({**config_hashes, **lib_hashes})
+
+          with open('hash-manifest.json', 'w') as f:
+              json.dump(manifest, f, indent=2)
+          "
+
+      - name: Upload hash manifest
+        uses: actions/upload-artifact@v4
+        with:
+          name: hash-manifest
+          path: hash-manifest.json

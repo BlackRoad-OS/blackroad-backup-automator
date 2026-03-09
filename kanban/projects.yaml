@@ -1,0 +1,240 @@
+# BlackRoad Kanban Projects Configuration
+# Salesforce-style project management in GitHub
+# CRM/Cloudflare hold state, Git holds files
+
+version: "1.0"
+schema: "blackroad-kanban-v1"
+
+# Project Boards - Salesforce-style pipeline management
+boards:
+  backup-automator:
+    name: "Backup Automator Pipeline"
+    description: "Main product development board"
+    columns:
+      - id: backlog
+        name: "Backlog"
+        limit: null
+        automation:
+          - trigger: issue_created
+            action: add_to_column
+      - id: triage
+        name: "Triage"
+        limit: 10
+        automation:
+          - trigger: label_added
+            label: "needs-review"
+            action: move_to_column
+      - id: in_progress
+        name: "In Progress"
+        limit: 5
+        automation:
+          - trigger: branch_created
+            action: move_to_column
+          - trigger: pr_opened
+            action: move_to_column
+      - id: review
+        name: "Review"
+        limit: 3
+        automation:
+          - trigger: pr_review_requested
+            action: move_to_column
+      - id: testing
+        name: "Testing"
+        limit: 3
+        automation:
+          - trigger: label_added
+            label: "testing"
+            action: move_to_column
+      - id: done
+        name: "Done"
+        limit: null
+        automation:
+          - trigger: pr_merged
+            action: move_to_column
+          - trigger: issue_closed
+            action: move_to_column
+
+  integrations:
+    name: "Integration Status"
+    description: "Track API and service integrations"
+    columns:
+      - id: planned
+        name: "Planned"
+      - id: implementing
+        name: "Implementing"
+      - id: testing
+        name: "Testing"
+      - id: active
+        name: "Active"
+      - id: maintenance
+        name: "Maintenance"
+
+  agent-tasks:
+    name: "Agent Tasks"
+    description: "AI agent task management"
+    columns:
+      - id: queued
+        name: "Queued"
+      - id: assigned
+        name: "Assigned"
+      - id: executing
+        name: "Executing"
+      - id: validation
+        name: "Validation"
+      - id: complete
+        name: "Complete"
+
+# Card Templates
+card_templates:
+  feature:
+    fields:
+      - name: title
+        type: string
+        required: true
+      - name: description
+        type: text
+        required: true
+      - name: priority
+        type: enum
+        values: [critical, high, medium, low]
+        default: medium
+      - name: estimate
+        type: number
+        unit: hours
+      - name: assignee
+        type: user
+      - name: labels
+        type: array
+      - name: linked_issues
+        type: array
+      - name: hash_id
+        type: string
+        auto: sha256
+
+  bug:
+    fields:
+      - name: title
+        type: string
+        required: true
+      - name: description
+        type: text
+        required: true
+      - name: severity
+        type: enum
+        values: [critical, major, minor, trivial]
+      - name: steps_to_reproduce
+        type: text
+      - name: expected_behavior
+        type: text
+      - name: actual_behavior
+        type: text
+      - name: environment
+        type: object
+      - name: hash_id
+        type: string
+        auto: sha256
+
+  integration:
+    fields:
+      - name: service
+        type: string
+        required: true
+      - name: endpoint
+        type: url
+      - name: status
+        type: enum
+        values: [healthy, degraded, down, unknown]
+      - name: last_check
+        type: datetime
+      - name: hash_id
+        type: string
+        auto: sha256
+
+# Workflow Automations
+automations:
+  pr_quality_gate:
+    triggers:
+      - pr_opened
+      - pr_synchronized
+    actions:
+      - validate_hash_integrity
+      - check_endpoint_health
+      - run_integration_tests
+      - update_kanban_status
+
+  sync_to_crm:
+    triggers:
+      - card_updated
+      - card_moved
+    actions:
+      - sync_salesforce
+      - update_cloudflare_kv
+      - log_state_change
+
+  agent_task_assignment:
+    triggers:
+      - card_created
+      - label_added
+    conditions:
+      - label: "agent-task"
+    actions:
+      - assign_to_agent_queue
+      - generate_task_hash
+      - notify_agent_system
+
+# State Synchronization
+state_sync:
+  primary: cloudflare_kv
+  secondary: salesforce
+  git_reference: true
+
+  cloudflare:
+    namespace: "blackroad-kanban"
+    keys:
+      - pattern: "board:{board_id}:state"
+        ttl: null
+      - pattern: "card:{card_id}:data"
+        ttl: null
+      - pattern: "hash:{hash_id}:verification"
+        ttl: 86400
+
+  salesforce:
+    objects:
+      - name: "BlackRoad_Project__c"
+        mapping:
+          board_id: "External_ID__c"
+          name: "Name"
+          status: "Status__c"
+      - name: "BlackRoad_Task__c"
+        mapping:
+          card_id: "External_ID__c"
+          title: "Name"
+          description: "Description__c"
+          hash_id: "Hash_ID__c"
+
+# Labels for organization
+labels:
+  - name: "agent-task"
+    color: "7057ff"
+    description: "Task for AI agents"
+  - name: "integration"
+    color: "0366d6"
+    description: "Integration related"
+  - name: "pi-cluster"
+    color: "28a745"
+    description: "Raspberry Pi cluster tasks"
+  - name: "mobile"
+    color: "e99695"
+    description: "Mobile app integration"
+  - name: "cloud"
+    color: "1d76db"
+    description: "Cloud service tasks"
+  - name: "hash-verified"
+    color: "0e8a16"
+    description: "Hash integrity verified"
+  - name: "needs-review"
+    color: "fbca04"
+    description: "Needs code review"
+  - name: "testing"
+    color: "d93f0b"
+    description: "In testing phase"
